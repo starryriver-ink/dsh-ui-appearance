@@ -58,6 +58,8 @@ const COPY: Record<string, string> = {
   'background.videoError.type': 'That is not a video file',
   'background.videoHint': 'video plays muted in a loop',
   'background.videoUnsupported': 'this browser cannot play that codec',
+  'background.videoRate': 'Video playback speed',
+  'background.videoRateHint': 'Below 100% is slow motion',
   'background.opacity': 'Image opacity',
   'background.blur': 'Background blur',
   'background.scrim': 'Background scrim',
@@ -211,13 +213,21 @@ describe('AppearanceCustomizerRow', () => {
   it('sliders write their settings fields', () => {
     const b = mount()
     openRow()
-    const sliders = document.querySelectorAll('input[type="range"]')
-    fireEvent.change(sliders[0]!, { target: { value: '0.5' } })
+    // Resolve by aria-label rather than position: the section grows and its
+    // sliders get inserted and reordered.
+    const slider = (label: string): HTMLInputElement => {
+      const el = document.querySelector(`input[type="range"][aria-label="${label}"]`)
+      if (el === null) throw new Error(`missing slider: ${label}`)
+      return el as HTMLInputElement
+    }
+    fireEvent.change(slider('Image opacity'), { target: { value: '0.5' } })
     expect(b.set).toHaveBeenCalledWith('backgroundOpacity', 0.5)
-    fireEvent.change(sliders[1]!, { target: { value: '10' } })
+    fireEvent.change(slider('Background blur'), { target: { value: '10' } })
     expect(b.set).toHaveBeenCalledWith('backgroundBlur', 10)
-    fireEvent.change(sliders[2]!, { target: { value: '0.4' } })
+    fireEvent.change(slider('Background scrim'), { target: { value: '0.4' } })
     expect(b.set).toHaveBeenCalledWith('scrim', 0.4)
+    fireEvent.change(slider('Video playback speed'), { target: { value: '0.5' } })
+    expect(b.set).toHaveBeenCalledWith('backgroundVideoRate', 0.5)
   })
 
   it('shows the preview and remove action once an image is set', () => {

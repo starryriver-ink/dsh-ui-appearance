@@ -281,13 +281,21 @@ describe('buildTokenOverrides', () => {
     expect(withPanel['--dsw-alias-bg-layer-1']!.light).toBe('rgba(32, 48, 64, 0.5)')
   })
 
-  it('layer-2 (settings panel root) follows the panel color under translucency', () => {
+  it('layer-2 (settings panel root) is excluded from the translucency bake', () => {
     const tokens = buildTokenOverrides(full({ panel: '#9a2323', surfaceAlpha: 0.6 }))
-    // mix(#9a2323, #ffffff, 0.08) = rgb(162, 53, 53).
-    expect(tokens['--dsw-alias-bg-layer-2']!.light).toBe('rgba(162, 53, 53, 0.6)')
-    // Without a panel color it stays on the neutral surface family.
+    // Floating surfaces never take the body alpha (OPAQUE_OVERLAY_TOKENS): the
+    // settings dialog has to stay readable at any body translucency, so it
+    // keeps a solid fill derived from the panel color instead.
+    // mix(#9a2323, #ffffff, 0.08) = #a23535.
+    expect(tokens['--dsw-alias-bg-layer-2']!.light).toBe('#a23535')
+    expect(tokens['--dsw-alias-bg-layer-2']!.light).not.toContain('rgba(')
+    expect(tokens['--dsw-alias-bg-layer-3']?.light ?? '').not.toContain('rgba(')
+    // Without a panel color it stays on the neutral surface family, still solid.
     const stock = buildTokenOverrides(full({ surfaceAlpha: 0.6 }))
-    expect(stock['--dsw-alias-bg-layer-2']!.light).toBe('rgba(255, 255, 255, 0.6)')
+    expect(stock['--dsw-alias-bg-layer-2']?.light ?? '').not.toContain('rgba(')
+    // The window body still bakes the slider value — this is a targeted
+    // exclusion, not a blanket skip.
+    expect(tokens['--dsw-alias-bg-layer-1']!.light).toContain('rgba(')
   })
 
   it('brand/accent action buttons track the input opacity, independent of the panel', () => {
@@ -365,12 +373,14 @@ describe('buildTokenOverrides', () => {
     expect(opaque['--dsw-alias-bg-base']).toBeDefined()
   })
 
-  it('settings surfaces (selected nav tab, menus) follow the translucency too', () => {
+  it('settings surfaces follow the translucency, except the floating ones', () => {
     const tokens = buildTokenOverrides(full({ surfaceAlpha: 0.5 }))
     expect(tokens['--dsw-specific-sidebar-nav-item-active']!.light).toBe('rgba(235, 238, 242, 0.5)')
     expect(tokens['--dsw-specific-sidebar-nav-item-hover']!.light).toBe('rgba(241, 243, 245, 0.5)')
-    expect(tokens['--dsw-specific-menu']).toBeDefined()
-    expect(tokens['--dsw-menu-surface-fill']).toBeDefined()
+    // Menus and tooltips float above the body, so they keep their stock fill.
+    expect(tokens['--dsw-specific-menu']).toBeUndefined()
+    expect(tokens['--dsw-menu-surface-fill']).toBeUndefined()
+    expect(tokens['--dsw-specific-tip']).toBeUndefined()
     expect(tokens['--dsw-alias-fill-l1']).toBeDefined()
   })
 

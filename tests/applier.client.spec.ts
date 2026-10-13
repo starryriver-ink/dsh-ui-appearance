@@ -67,7 +67,7 @@ describe('AppearanceApplier', () => {
     expect(body.style.getPropertyValue('--dsw-appearance-bg-base-light')).toBe('#ffffff')
     expect(body.style.getPropertyValue('--dsw-appearance-bg-base-dark')).toBe('#151517')
     // 毛玻璃 rides the same wallpaper-layer filter as 背景模糊 (summed).
-    expect(body.style.getPropertyValue('--dsw-appearance-blur')).toBe('20px')
+    expect(body.style.getPropertyValue('--dsw-appearance-filter')).toBe('blur(20px)')
     // …and amplifies the host modal masks so covered content frosts too.
     expect(body.style.getPropertyValue('--dsw-mask-blur')).toBe('blur(8px)')
     expect(body.style.getPropertyValue('--dsw-appearance-scrim')).toBe('0.4')
@@ -148,19 +148,25 @@ describe('AppearanceApplier', () => {
     applier.dispose()
   })
 
-  it('glass 0 writes blur(0px) (no stock fallback); dispose removes the token', () => {
+  it('blur 0 writes an explicit none (no stock fallback, no no-op filter); dispose removes the token', () => {
     const { ctx } = fakeCtx()
     const applier = new AppearanceApplier(ctx)
     applier.apply(full({ glassBlur: 20, backgroundBlur: 0 }))
+    expect(document.body.style.getPropertyValue('--dsw-appearance-filter')).toBe('blur(20px)')
     expect(document.body.style.getPropertyValue('--dsw-mask-blur')).toBe('blur(20px)')
     expect(document.body.style.getPropertyValue('--dsw-menu-backdrop-filter')).toBe('blur(20px) saturate(150%)')
     applier.apply(full({ glassBlur: 0, backgroundBlur: 0 }))
-    expect(document.body.style.getPropertyValue('--dsw-mask-blur')).toBe('blur(0px)')
+    // `none`, not `blur(0px)`: any non-none filter keeps the wallpaper layer on
+    // the offscreen filter path, costing a full-viewport pass per frame.
+    expect(document.body.style.getPropertyValue('--dsw-appearance-filter')).toBe('none')
+    expect(document.body.style.getPropertyValue('--dsw-mask-blur')).toBe('none')
     expect(document.body.style.getPropertyValue('--dsw-menu-backdrop-filter')).toBe('none')
     applier.apply(full({ glassBlur: 6, backgroundBlur: 0 }))
+    expect(document.body.style.getPropertyValue('--dsw-appearance-filter')).toBe('blur(6px)')
     expect(document.body.style.getPropertyValue('--dsw-mask-blur')).toBe('blur(6px)')
     expect(document.body.style.getPropertyValue('--dsw-menu-backdrop-filter')).toBe('blur(6px) saturate(150%)')
     applier.dispose()
+    expect(document.body.style.getPropertyValue('--dsw-appearance-filter')).toBe('')
     expect(document.body.style.getPropertyValue('--dsw-mask-blur')).toBe('')
     expect(document.body.style.getPropertyValue('--dsw-menu-backdrop-filter')).toBe('')
   })
@@ -169,11 +175,11 @@ describe('AppearanceApplier', () => {
     const { ctx } = fakeCtx()
     const applier = new AppearanceApplier(ctx)
     applier.apply(full({ backgroundBlur: 10, scrim: 0.5 }))
-    expect(document.body.style.getPropertyValue('--dsw-appearance-blur')).toBe('10px')
+    expect(document.body.style.getPropertyValue('--dsw-appearance-filter')).toBe('blur(10px)')
     applier.dispose()
     expect(document.getElementById(STYLE_ID)).toBeNull()
     expect(document.getElementById(BG_LAYER_ID)).toBeNull()
-    expect(document.body.style.getPropertyValue('--dsw-appearance-blur')).toBe('')
+    expect(document.body.style.getPropertyValue('--dsw-appearance-filter')).toBe('')
     expect(document.body.style.getPropertyValue('--dsw-appearance-scrim')).toBe('')
   })
 
