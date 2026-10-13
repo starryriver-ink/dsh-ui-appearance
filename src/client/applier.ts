@@ -278,6 +278,7 @@ export class AppearanceApplier {
     this.layer = document.createElement('div')
     this.layer.id = BG_LAYER_ID
     document.body.prepend(this.layer)
+    document.addEventListener('visibilitychange', this.onVisibilityChange)
   }
 
   /**
@@ -467,11 +468,9 @@ export class AppearanceApplier {
     // may recover from a previous failure).
     video.onloadeddata = (): void => { this.reportVideoError(false) }
     this.layer.setAttribute('data-video', '')
-    video.play().catch(() => {
-      // Autoplay policy or unsupported codec: keep the layer fallback silent.
-      // `onerror` owns the unsupported-codec report; a play() rejection on its
-      // own is not a decode failure and must not claim one.
-    })
+    // Starts, or stays paused, according to document visibility: loading a
+    // wallpaper while the window is hidden must not spin up the decoder.
+    this.syncPlaybackState()
   }
 
   /**
@@ -483,6 +482,36 @@ export class AppearanceApplier {
     if (this.videoFailed === failed) return
     this.videoFailed = failed
     this.onVideoPlaybackError?.(failed)
+  }
+
+  /**
+   * Pause the background video while the document is hidden and resume it when
+   * the page comes back. A wallpaper is invisible then, but a playing video
+   * still costs a whole hardware-decode pipeline — measured as by far the
+   * largest GPU consumer this plugin has — so leaving it running in a
+   * background window is pure waste.
+   */
+  private readonly onVisibilityChange = (): void => {
+    this.syncPlaybackState()
+  }
+
+  /**
+   * Align the video element's playback with the document visibility. Called on
+   * every visibility change and whenever a video is (re)loaded, so a wallpaper
+   * that arrives while the window is hidden does not spin up the decoder.
+   */
+  private syncPlaybackState(): void {
+    const video = this.videoEl
+    if (video === undefined) return
+    if (document.hidden) {
+      video.pause()
+      return
+    }
+    video.play().catch(() => {
+      // Autoplay policy or unsupported codec: keep the layer fallback silent.
+      // `onerror` owns the unsupported-codec report; a play() rejection on its
+      // own is not a decode failure and must not claim one.
+    })
   }
 
   /** Create the background video element once. */
@@ -535,5 +564,6 @@ export class AppearanceApplier {
     // Compositor anchor cleanup: remove the html attribute so the host's natural
     // background resumes after the plugin is unloaded.
     document.documentElement.removeAttribute('data-dsw-has-bg')
+    document.removeEventListener('visibilitychange', this.onVisibilityChange)
   }
 }
