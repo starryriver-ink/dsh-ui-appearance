@@ -25,6 +25,31 @@ const LIGHT_INK = '#fafaf9'
 const DARK_INK = '#0f1115'
 
 /**
+ * Tokens that stay stock even when `surfaceAlpha` drops below 1: dialogs,
+ * menus and tooltips.
+ *
+ * `surfaceAlpha` is a single knob for the whole window, but it conflates two
+ * very different kinds of surface. The window body can afford to be far more
+ * translucent than a popup can: content panels show the wallpaper through and
+ * remain readable, while a dialog, a dropdown or a tooltip floats *over* that
+ * content — baking the wallpaper alpha into those makes them unreadable long
+ * before the body is too transparent, and raising the body back up makes the
+ * wallpaper pointless. The two uses cannot share one number.
+ *
+ * Excluding them here splits the two: the body follows the slider, the floating
+ * surfaces keep their stock fill. Every entry is something drawn above the
+ * window body — `layer-2` is the settings dialog panel, `layer-3` the controls
+ * inside it, and the menu / tip tokens the popovers layered over everything.
+ */
+const OPAQUE_OVERLAY_TOKENS: ReadonlySet<string> = new Set([
+  '--dsw-alias-bg-layer-2',
+  '--dsw-alias-bg-layer-3',
+  '--dsw-specific-menu',
+  '--dsw-menu-surface-fill',
+  '--dsw-specific-tip',
+])
+
+/**
  * The on-ink counterpart of a label color. The sidebar wordmark's "harness"
  * badge paints its chip with `currentColor` (the label color) and its letters
  * with `--dsw-alias-label-primary-inverted`; `::selection` pairs its
@@ -604,6 +629,8 @@ export function buildTokenOverrides(settings: AppearanceSettings): ThemeTokenOve
       flipL: string | undefined,
       flipD: string | undefined,
     ): void => {
+      // Floating surfaces keep their stock fill: see OPAQUE_OVERLAY_TOKENS.
+      if (OPAQUE_OVERLAY_TOKENS.has(token)) return
       bakeAlpha(token, explicitLight, explicitDark, flipL, flipD, alpha)
     }
 
