@@ -25,7 +25,7 @@ const BODY_VARIABLES = [
   '--dsw-appearance-bg-opacity',
   '--dsw-appearance-bg-base-light',
   '--dsw-appearance-bg-base-dark',
-  '--dsw-appearance-blur',
+  '--dsw-appearance-filter',
   '--dsw-appearance-scrim',
   '--dsw-appearance-bubble-ink-light',
   '--dsw-appearance-bubble-ink-dark',
@@ -77,7 +77,7 @@ const SHEET = `
   background-size: cover;
   background-image: var(--dsw-appearance-bg-image, none);
   opacity: var(--dsw-appearance-bg-opacity, 1);
-  filter: blur(var(--dsw-appearance-blur, 0px));
+  filter: var(--dsw-appearance-filter, none);
 }
 #${BG_LAYER_ID}[data-video]::before {
   display: none;
@@ -90,7 +90,7 @@ const SHEET = `
   object-fit: cover;
   display: none;
   opacity: var(--dsw-appearance-bg-opacity, 1);
-  filter: blur(var(--dsw-appearance-blur, 0px));
+  filter: var(--dsw-appearance-filter, none);
 }
 #${BG_LAYER_ID}[data-video] video {
   display: block;
@@ -316,9 +316,17 @@ export class AppearanceApplier {
     // 背景模糊 and 毛玻璃 ride the same wallpaper-layer filter: dragging either
     // slider deepens the blur of the wallpaper that the translucent surfaces
     // reveal. The panels themselves are never touched.
+    //
+    // The variable carries a whole filter value rather than a bare radius, so
+    // that a zero radius resolves to `none` instead of `blur(0px)`. Any
+    // non-none filter puts the wallpaper layer on the offscreen filter path,
+    // which costs a full-viewport pass per presented frame — pure overhead at
+    // radius 0, and the video layer is where it hurts most, because Chromium
+    // can otherwise hand a plain <video> straight to the display engine.
+    const wallpaperBlur = value.backgroundBlur + value.glassBlur
     body.style.setProperty(
-      '--dsw-appearance-blur',
-      `${value.backgroundBlur + value.glassBlur}px`,
+      '--dsw-appearance-filter',
+      wallpaperBlur > 0 ? `blur(${wallpaperBlur}px)` : 'none',
     )
     // 毛玻璃 also drives the host's modal masks and dropdown menu backdrop filters:
     // dialogs/dropdowns dim the page through `.mask` elements whose backdrop-filter
@@ -326,8 +334,12 @@ export class AppearanceApplier {
     // underlying content through `var(--dsw-menu-backdrop-filter)` (stock: blur(40px)).
     // Writing both tokens on body wins over the host's stylesheet definitions (body is
     // the closer ancestor), so all popovers and masks frost synchronously with the slider.
-    // 0 means blur(0px) / none (fully clear), NOT the stock fallbacks.
-    body.style.setProperty('--dsw-mask-blur', `blur(${value.glassBlur}px)`)
+    // 0 means a cleared mask, NOT the stock fallbacks — write an explicit
+    // `none` so a no-op radius does not keep the mask on the filter path.
+    body.style.setProperty(
+      '--dsw-mask-blur',
+      value.glassBlur > 0 ? `blur(${value.glassBlur}px)` : 'none',
+    )
     body.style.setProperty(
       '--dsw-menu-backdrop-filter',
       value.glassBlur > 0 ? `blur(${value.glassBlur}px) saturate(150%)` : 'none',
