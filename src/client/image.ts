@@ -7,8 +7,10 @@
 
 /** Input file size cap (bytes). Deliberately generous: images persist in
  * IndexedDB, not localStorage, so this is a sanity guard against absurd
- * files (multi-hundred-MB scans), not a real constraint. */
-export const MAX_INPUT_BYTES = 200 * 1024 * 1024
+ * files, not a real constraint. Raised from 200MB to 2GB in this fork —
+ * 200MB rejects ordinary 4K masters, and the real ceiling is the origin's
+ * IndexedDB quota, not this number. */
+export const MAX_INPUT_BYTES = 2048 * 1024 * 1024
 
 /** Longest-edge bound above which an image is resampled. Beyond this, decode
  * and GPU texture costs get pathological; a quality-0.95 WebP keeps it
