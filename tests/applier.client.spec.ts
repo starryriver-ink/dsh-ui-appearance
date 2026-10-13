@@ -210,6 +210,29 @@ describe('AppearanceApplier', () => {
     expect(layer.querySelector('video')).toBeNull()
   })
 
+  it('arms the video element with the configured playback rate before the load', async () => {
+    const { ctx } = fakeCtx()
+    const applier = new AppearanceApplier(ctx)
+    const layer = document.getElementById(BG_LAYER_ID)!
+    applier.apply(full({ backgroundVideo: 'key-rate', backgroundVideoRate: 0.5 }))
+    videoMock.resolveLoad!(new Blob(['x'], { type: 'video/mp4' }))
+    await new Promise(resolve => { setTimeout(resolve, 0) })
+    const video = layer.querySelector('video') as HTMLVideoElement | null
+    expect(video).not.toBeNull()
+    // The media load algorithm (triggered by assigning `src`) restores
+    // playbackRate from defaultPlaybackRate, so the setting has to live in
+    // defaultPlaybackRate too — asserting only playbackRate would pass even
+    // with the bug, since jsdom never runs a load. This is the assertion that
+    // distinguishes the two.
+    expect(video!.defaultPlaybackRate).toBe(0.5)
+    expect(video!.playbackRate).toBe(0.5)
+    // A later rate change on the loaded element still lands directly.
+    applier.apply(full({ backgroundVideo: 'key-rate', backgroundVideoRate: 0.25 }))
+    expect(video!.playbackRate).toBe(0.25)
+    expect(video!.defaultPlaybackRate).toBe(0.25)
+    applier.dispose()
+  })
+
   it('reports a video that fails to decode and clears the layer', async () => {
     const { ctx } = fakeCtx()
     const applier = new AppearanceApplier(ctx)

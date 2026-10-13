@@ -381,7 +381,7 @@ export class AppearanceApplier {
     // because syncVideo() early-returns while the record key is unchanged — a
     // rate change on the already-loaded video would never reach it.
     this.videoRate = value.backgroundVideoRate > 0 ? value.backgroundVideoRate : 1
-    if (this.videoEl !== undefined) this.videoEl.playbackRate = this.videoRate
+    this.syncPlaybackRate()
     // A background video (IndexedDB record key) replaces the image layer;
     // loading is async and only re-runs when the key changes.
     void this.syncVideo(value.backgroundVideo)
@@ -478,6 +478,12 @@ export class AppearanceApplier {
     const video = this.ensureVideo()
     this.videoUrl = URL.createObjectURL(record)
     video.src = this.videoUrl
+    // Assigning `src` runs the media load algorithm, which resets playbackRate
+    // back to defaultPlaybackRate — so the configured rate has to be re-applied
+    // after it. Without this a freshly loaded wallpaper silently played at 1x
+    // until the user nudged the speed slider (whose path does not go through a
+    // load), which is exactly how the persisted rate "did not take effect".
+    this.syncPlaybackRate()
     // Unsupported codec (e.g. HEVC in an mp4): drop the video layer so the
     // wallpaper fallback (if any) shows instead of a black frame, and tell the
     // row — otherwise the failure is indistinguishable from "no background".
@@ -537,6 +543,22 @@ export class AppearanceApplier {
     })
   }
 
+  /**
+   * Push the configured rate onto the video element.
+   *
+   * `defaultPlaybackRate` is written alongside `playbackRate` because the media
+   * load algorithm (triggered by assigning `src`, and by `load()`) resets
+   * `playbackRate` to `defaultPlaybackRate`. Setting only `playbackRate` before
+   * a load therefore loses the setting the moment the video starts loading.
+   * No-op until an element exists.
+   */
+  private syncPlaybackRate(): void {
+    const video = this.videoEl
+    if (video === undefined) return
+    video.defaultPlaybackRate = this.videoRate
+    video.playbackRate = this.videoRate
+  }
+
   /** Create the background video element once. */
   private ensureVideo(): HTMLVideoElement {
     if (this.videoEl === undefined) {
@@ -547,6 +569,7 @@ export class AppearanceApplier {
       video.autoplay = true
       // Inherit the rate the last apply() recorded, so an element created for a
       // newly loaded video starts at the configured speed instead of 1x.
+      video.defaultPlaybackRate = this.videoRate
       video.playbackRate = this.videoRate
       this.layer.append(video)
       this.videoEl = video
