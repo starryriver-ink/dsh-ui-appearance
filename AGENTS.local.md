@@ -72,6 +72,19 @@ pnpm install
 `pnpm test` 有 **15 个失败**（WIP 状态）。判断"是否引入回归"必须对照这个基线，
 不要把这 8 个错误 / 15 个失败当成自己造成的。
 
+**本机排障工具**（都在另一个工作区 `C:\Users\suluo\Documents\DSH\`）：
+
+| 工具 | 用途 |
+|---|---|
+| `gpu-sample3.ps1` | 按 **pid + engtype** 采样 GPU 引擎占用（3 次取中位数）。看 GPU 必须用它 —— 任务管理器的总览曲线会混入别的进程 |
+| `.tools/analyze-motion.mjs` | 判断素材帧率是否注水：取 20 帧算相邻帧平均像素差（逐帧哈希会被编码噪声骗过） |
+| `.tools/check-ui-appearance-store.mjs` | 从渲染进程的 leveldb 里读出插件持久化的设置（排查"设置没生效 / 没存上"） |
+| `validate-dsh-profile.mjs` | 校验 profile 的 `cordis.patch.yml` 与 `package.json` 能否解析 —— 这两个文件改坏会直接启动失败 |
+
+本地转码用 `C:\Users\suluo\Documents\Codex\2026-08-11\zhe\work\ffmpeg-bytedeco\ffmpeg.exe`
+（bytedeco 的 ffmpeg 8.0.1，带 `h264_mf` —— 走 MediaFoundation 调 AMD 硬件编码，约 2.5× 实时；
+注意它**没有** `libx264`，也缺 `mpdecimate` 滤镜）。
+
 ## 5. 已实测的关键事实（避免重复踩坑）
 
 - **GPU 占用必须分引擎、分进程看**：壁纸占用集中在**硬件视频解码引擎**
