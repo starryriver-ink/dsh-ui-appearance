@@ -26,17 +26,32 @@ const BODY_VARIABLES = [
   '--dsw-appearance-bg-base-light',
   '--dsw-appearance-bg-base-dark',
   '--dsw-appearance-filter',
+  '--dsw-appearance-inset',
   '--dsw-appearance-scrim',
   '--dsw-appearance-bubble-ink-light',
   '--dsw-appearance-bubble-ink-dark',
 ] as const
 
 /**
+ * Edge margin (px) the wallpaper layer grows by while a blur is active.
+ *
+ * A blurred layer bleeds partial transparency at its own edges unless it
+ * extends past the viewport, so the sheet pushes the layer out by this much —
+ * but only while a blur actually applies. With no blur the margin buys nothing
+ * and costs a composite ~11% larger than the viewport plus a scaling pass over
+ * the media on every presented frame.
+ *
+ * 48px covers the largest blur the sliders allow (30px background + 20px glass).
+ */
+const BLUR_EDGE_MARGIN_PX = 48
+
+/**
  * Static sheet: the background layer is pushed to `z-index: -1` so it paints
  * below all content but above the body background — surfaces painted with
  * translucent tokens still show the image through, and no stacking context is
- * created on #root. `inset: -48px` gives the blur filter room so edges never
- * show transparent bleed.
+ * created on #root. The layer's `inset` is driven by `--dsw-appearance-inset`:
+ * it grows past the viewport only while a blur applies, since hiding blur edge
+ * bleed is the only reason that margin exists.
  *
  * #root is deliberately left untouched: no `position`/`z-index`, no
  * `backdrop-filter`. A non-none backdrop-filter turns #root into the
@@ -60,7 +75,7 @@ const BODY_VARIABLES = [
 const SHEET = `
 #${BG_LAYER_ID} {
   position: fixed;
-  inset: -48px;
+  inset: var(--dsw-appearance-inset, 0px);
   z-index: -1;
   pointer-events: none;
   background-color: var(--dsw-appearance-bg-base-light, #ffffff);
@@ -330,6 +345,14 @@ export class AppearanceApplier {
     body.style.setProperty(
       '--dsw-appearance-filter',
       wallpaperBlur > 0 ? `blur(${wallpaperBlur}px)` : 'none',
+    )
+    // The edge margin rides the same condition as the filter: growing the layer
+    // past the viewport only hides blur edge bleed, so with no blur it is pure
+    // overhead — a composite ~11% larger than the viewport plus a scaling pass
+    // over the media every presented frame.
+    body.style.setProperty(
+      '--dsw-appearance-inset',
+      wallpaperBlur > 0 ? `-${BLUR_EDGE_MARGIN_PX}px` : '0px',
     )
     // 毛玻璃 also drives the host's modal masks and dropdown menu backdrop filters:
     // dialogs/dropdowns dim the page through `.mask` elements whose backdrop-filter
