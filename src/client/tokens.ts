@@ -10,7 +10,7 @@ import type { AppearanceRole, AppearanceSettings } from '../appearance-settings.
 import { contrastRatio, isDarkColor, mixHex, relativeLuminance, withAlpha } from './color.ts'
 // Schema bounds live next to the settings document; re-exported here so the
 // slider caps and the persistence sanitizer share one source of truth.
-export { BACKGROUND_BLUR_MAX, EMPHASIS_ALPHA_MAX, EMPHASIS_ALPHA_MIN, GLASS_BLUR_MAX } from '../appearance-settings.ts'
+export { BACKGROUND_BLUR_MAX, BACKGROUND_VIDEO_RATE_MAX, BACKGROUND_VIDEO_RATE_MIN, EMPHASIS_ALPHA_MAX, EMPHASIS_ALPHA_MIN, GLASS_BLUR_MAX } from '../appearance-settings.ts'
 
 /** Override-layer source name pinned to this package (also names inspection). */
 export const OVERRIDE_SOURCE = '@deepseek-ai/dsh-client-ui-appearance'

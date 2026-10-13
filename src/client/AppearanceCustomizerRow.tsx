@@ -23,7 +23,8 @@ import { classifyUrl, loadImageFromUrl, loadVideoFromUrl, urlToName, UrlLoadFail
 import { exportColorScheme, parseColorScheme } from './color-scheme.ts'
 import {
   APPEARANCE_PRESETS, LIGHT_PRESETS, DARK_PRESETS,
-  BACKGROUND_BLUR_MAX, EMPHASIS_ALPHA_MAX, EMPHASIS_ALPHA_MIN, GLASS_BLUR_MAX,
+  BACKGROUND_BLUR_MAX, BACKGROUND_VIDEO_RATE_MAX, BACKGROUND_VIDEO_RATE_MIN,
+  EMPHASIS_ALPHA_MAX, EMPHASIS_ALPHA_MIN, GLASS_BLUR_MAX,
 } from './tokens.ts'
 import type { AppearanceKey } from './locales.ts'
 import type { createAppearanceRowStore } from './settings-store.ts'
@@ -708,6 +709,16 @@ export function AppearanceCustomizerRow({
                         ? localErrorText('background.readError', readError, t)
                         : t('background.dropHint')}
             </div>
+            <Slider
+              label={t('background.videoRate')}
+              value={settings.backgroundVideoRate}
+              min={BACKGROUND_VIDEO_RATE_MIN}
+              max={BACKGROUND_VIDEO_RATE_MAX}
+              step={0.05}
+              format={value => `${value.toFixed(2)}×`}
+              onChange={value => { set('backgroundVideoRate', value) }}
+            />
+            <div className={css.hint}>{t('background.videoRateHint')}</div>
             <Slider
               label={t('background.opacity')}
               value={settings.backgroundOpacity}

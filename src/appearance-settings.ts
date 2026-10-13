@@ -9,6 +9,12 @@ export const BACKGROUND_BLUR_MAX = 30
 /** Max glass backdrop blur in px (schema bound). */
 export const GLASS_BLUR_MAX = 20
 
+/** Slowest background-video playback rate (schema bound); below 1 is slow motion. */
+export const BACKGROUND_VIDEO_RATE_MIN = 0.25
+
+/** Fastest background-video playback rate (schema bound). */
+export const BACKGROUND_VIDEO_RATE_MAX = 2
+
 /** Max emphasized-text tint alpha (schema bound for the inline-code chips). */
 export const EMPHASIS_ALPHA_MAX = 0.45
 
@@ -103,6 +109,11 @@ export interface AppearanceSettings extends AppearanceColors {
   backgroundImage: string
   /** IndexedDB key of the background video; '' clears the video. */
   backgroundVideo: string
+  /** Background video playback-rate multiplier, `BACKGROUND_VIDEO_RATE_MIN` to
+   * `BACKGROUND_VIDEO_RATE_MAX` (1 = real time). Slow motion is both a
+   * deliberate wallpaper effect and the cheapest decode saving available: the
+   * hardware decoder only presents `rate` times as many frames per second. */
+  backgroundVideoRate: number
   /** The background image was analyzed as predominantly dark. */
   imageDark: boolean
   /** Background image layer opacity, 0..1. */
@@ -142,6 +153,7 @@ export const DEFAULT_SETTINGS: AppearanceSettings = {
   dark: { ...DEFAULT_DARK_THEME },
   backgroundImage: '',
   backgroundVideo: '',
+  backgroundVideoRate: 1,
   imageDark: false,
   backgroundOpacity: 1,
   backgroundBlur: 0,
@@ -163,6 +175,7 @@ const NUMERIC_BOUNDS: Record<string, { min: number; max: number }> = {
   inputAlpha: { min: 0, max: 1 },
   codeAlpha: { min: 0, max: 1 },
   glassBlur: { min: 0, max: GLASS_BLUR_MAX },
+  backgroundVideoRate: { min: BACKGROUND_VIDEO_RATE_MIN, max: BACKGROUND_VIDEO_RATE_MAX },
   emphasisAlpha: { min: EMPHASIS_ALPHA_MIN, max: EMPHASIS_ALPHA_MAX },
 }
 

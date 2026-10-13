@@ -256,6 +256,8 @@ export class AppearanceApplier {
   private imageUrl: string | undefined
   private removeOverrides: (() => void) | undefined
   private videoFailed = false
+  /** Last applied background-video playback rate; 1 until a snapshot says otherwise. */
+  private videoRate = 1
 
   /**
    * Notified when the background video stops being playable (unsupported
@@ -351,6 +353,11 @@ export class AppearanceApplier {
     const ink = bubbleInk(value)
     this.applyBubbleInk('light', ink.light)
     this.applyBubbleInk('dark', ink.dark)
+    // Playback rate: record it and push it onto the live element right here,
+    // because syncVideo() early-returns while the record key is unchanged — a
+    // rate change on the already-loaded video would never reach it.
+    this.videoRate = value.backgroundVideoRate > 0 ? value.backgroundVideoRate : 1
+    if (this.videoEl !== undefined) this.videoEl.playbackRate = this.videoRate
     // A background video (IndexedDB record key) replaces the image layer;
     // loading is async and only re-runs when the key changes.
     void this.syncVideo(value.backgroundVideo)
@@ -486,6 +493,9 @@ export class AppearanceApplier {
       video.loop = true
       video.playsInline = true
       video.autoplay = true
+      // Inherit the rate the last apply() recorded, so an element created for a
+      // newly loaded video starts at the configured speed instead of 1x.
+      video.playbackRate = this.videoRate
       this.layer.append(video)
       this.videoEl = video
     }
