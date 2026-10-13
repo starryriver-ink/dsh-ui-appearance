@@ -34,6 +34,8 @@ declare module '@deepseek-ai/dsh-client-runtime/client' {
     effect(fn: () => void | (() => void), reason: string): void
     locale: {
       register(namespace: string, dictionaries: Record<string, unknown>): void
+      /** Bind `t` to one namespace (the host exposes `ctx.locale.bind(ns)`). */
+      bind(namespace: string): (key: string) => string
     }
     theme: {
       overrideTokens(

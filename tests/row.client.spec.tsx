@@ -128,19 +128,24 @@ function mount() {
   return { store, set, setModeRole, setImage, setVideo, applyPreset, applyColors, resetAll, resetMode }
 }
 
+/** Expand the row's disclosure unless it is already open. The row defaults to
+ * expanded inside its own settings section, so a blind click would collapse it. */
 function openRow() {
+  if (screen.queryByText('Presets') !== null) return
   fireEvent.click(screen.getByRole('button', { name: 'Appearance' }))
 }
 
 describe('AppearanceCustomizerRow', () => {
-  it('starts collapsed and expands on the disclosure toggle', () => {
+  it('starts expanded and collapses on the disclosure toggle', () => {
     mount()
-    expect(screen.queryByText('Presets')).toBeNull()
-    openRow()
+    // The row now lives in its own settings section, so it opens by default:
+    // the collapsible header is the only thing that could hide the controls.
     expect(screen.getByText('Presets')).toBeDefined()
     expect(screen.getByText('Theme colors')).toBeDefined()
     expect(screen.getByText('Background')).toBeDefined()
     expect(screen.getByText('Interface')).toBeDefined()
+    fireEvent.click(screen.getByRole('button', { name: 'Appearance' }))
+    expect(screen.queryByText('Presets')).toBeNull()
   })
 
   it('preset chips drive applyPreset and the selected chip follows the store', () => {

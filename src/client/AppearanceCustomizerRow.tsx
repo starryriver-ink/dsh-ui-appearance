@@ -1,11 +1,12 @@
 /**
- * The Appearance customizer row registered into the General section item slot
- * (below ui-theme's Appearance preference row): preset chips, eight color
- * pickers, the background upload/drop zone with opacity and blur sliders, and
- * the interface transparency / glass sliders. All writes go through the
- * injected face; the scope round-trip reconciles.
+ * The Appearance customizer row and the settings section that hosts it: preset
+ * chips, eight color pickers, the background upload/drop zone with opacity,
+ * blur and video playback-rate sliders, and the interface transparency / glass
+ * sliders. The row is contributed to the section's own
+ * `settings.appearance.item` list slot; all writes go through the injected
+ * face, and the scope round-trip reconciles.
  */
-import { useEffect, useRef, useState, type ChangeEvent, type DragEvent } from 'react'
+import { useEffect, useRef, useState, type ChangeEvent, type DragEvent, type ReactNode } from 'react'
 import clsx from 'clsx'
 import {
   DisclosureRow,
@@ -58,8 +59,29 @@ export interface AppearanceCustomizerInjected {
 
 /** Full component props: runtime share + store share + locale seat + injected face. */
 export type AppearanceCustomizerComponentProps =
-  PropsRuntime<'settings.general.item'> & PropsStore<ReturnType<typeof createAppearanceRowStore>>
+  PropsRuntime<'settings.appearance.item'> & PropsStore<ReturnType<typeof createAppearanceRowStore>>
   & PropsLocale<'settings.appearance'> & AppearanceCustomizerInjected
+
+/**
+ * Runtime seat of the settings section hosting the row. The harness hands a
+ * section a `renderSlot` renderer for the child list slots it declared.
+ */
+export interface AppearanceSectionProps {
+  /** Render one of the section's declared child list slots. */
+  renderSlot?: (name: string, props?: Record<string, unknown>) => ReactNode
+}
+
+/**
+ * Settings-section shell for the customizer. The section owns the navigation
+ * entry; the row itself is contributed to the section's own
+ * `settings.appearance.item` list slot, so the row keeps its store + inject
+ * seat instead of inheriting the section's.
+ * @param props - the section runtime seat.
+ * @returns the section body with the row rendered inside it.
+ */
+export function AppearanceSection({ renderSlot }: AppearanceSectionProps): ReactNode {
+  return <div className={css.body}>{renderSlot?.('settings.appearance.item', {})}</div>
+}
 
 /** Stock display color per role and mode, shown when the role is unset
  * so the swatch always mirrors what the theme actually uses. */
@@ -285,7 +307,9 @@ export function AppearanceCustomizerRow({
 }: AppearanceCustomizerComponentProps) {
   const settings = useStore(s => s.settings)
   const videoPlaybackError = useStore(s => s.videoPlaybackError)
-  const [open, setOpen] = useState(false)
+  // Open by default: the row lives in its own settings section now, so the
+  // collapsible header is the only thing between the user and the controls.
+  const [open, setOpen] = useState(true)
   const [reading, setReading] = useState(false)
   const [readError, setReadError] = useState<'type' | 'size' | 'read' | null>(null)
   const [videoReading, setVideoReading] = useState(false)

@@ -21,7 +21,7 @@ import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
 import type {} from '@deepseek-ai/dsh-client-locale/client'
 import type {} from '@deepseek-ai/dsh-client-ui-theme/client'
 import type { AppearanceCustomizerInjected } from './AppearanceCustomizerRow.tsx'
-import { AppearanceCustomizerRow } from './AppearanceCustomizerRow.tsx'
+import { AppearanceCustomizerRow, AppearanceSection } from './AppearanceCustomizerRow.tsx'
 import { createAppearanceRowStore } from './settings-store.ts'
 import { en, zh, type AppearanceKey } from './locales.ts'
 import {
@@ -33,7 +33,7 @@ import { AppearanceApplier } from './applier.ts'
 import { deleteImage, saveImage } from './image-store.ts'
 import { deleteVideo } from './video-store.ts'
 
-export type { AppearanceCustomizerComponentProps, AppearanceCustomizerInjected } from './AppearanceCustomizerRow.tsx'
+export type { AppearanceCustomizerComponentProps, AppearanceCustomizerInjected, AppearanceSectionProps } from './AppearanceCustomizerRow.tsx'
 export type { AppearanceRowState } from './settings-store.ts'
 export type { AppearanceKey } from './locales.ts'
 export type { AppearanceSettings } from '../appearance-settings.ts'
@@ -371,8 +371,25 @@ export function apply(ctx: ClientContext): void {
     }
   }
 
-  ctx.slots.inject('settings.general.item', () => ctx.slots.register({
-    name: 'settings.general.item',
+  // The customizer is a top-level settings section rather than a row nested in
+  // General: it has grown well past a single disclosure row, and the section
+  // shell gives it its own navigation entry. The label resolves through the
+  // locale service — the host calls it lazily, so it follows the active
+  // language — and `row.title` is the same copy the row header uses. The row
+  // itself is contributed to the section's own child list slot, which keeps it
+  // on a store + inject seat instead of the section's.
+  const t = ctx.locale.bind(SETTINGS_NS)
+  ctx.slots.inject('settings.section', () => ctx.slots.register({
+    name: 'settings.section',
+    id: 'appearance-custom',
+    order: 25,
+    label: () => t('row.title'),
+    locale: SETTINGS_NS,
+    children: { 'settings.appearance.item': { kind: 'list', scope: 'root' } },
+  }, AppearanceSection))
+
+  ctx.slots.inject('settings.appearance.item', () => ctx.slots.register({
+    name: 'settings.appearance.item',
     id: 'appearance-custom',
     order: 1000,
     store,
