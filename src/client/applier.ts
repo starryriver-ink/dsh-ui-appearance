@@ -337,6 +337,120 @@ body[data-dsw-bubble-ink-light] #root [class*="bubble" i] a {
 `
 
 /**
+ * Geometry-driven indent guides for the sidebar trees.
+ *
+ * CSS cannot draw these correctly here: `--dsh-workspace-indent` only ever carries 0px and
+ * 12px, so a stylesheet cannot know a row's real depth; a group section wraps one project
+ * rather than one tree level, so a border segments per project; and rows are shorter than
+ * the row pitch, so per-row rails come out dashed. So the rails are measured from layout
+ * instead: every row's content start is a column, a column's rail spans the contiguous run
+ * of rows deeper than it, and the result is painted into a viewport-fixed overlay that
+ * recomputes on mutation (expand/collapse), scroll and resize.
+ */
+class SidebarGuides {
+  private readonly host: HTMLDivElement
+  private observer: MutationObserver | undefined
+  private frame = 0
+  private enabled = false
+
+  constructor() {
+    this.host = document.createElement('div')
+    this.host.id = 'dsh-appearance-guides'
+    const style = this.host.style
+    style.position = 'fixed'
+    style.inset = '0'
+    style.pointerEvents = 'none'
+    style.zIndex = '1'
+    style.overflow = 'hidden'
+  }
+
+  /**
+   * Turn the rails on or off.
+   * @param on - whether guides are enabled.
+   */
+  setEnabled(on: boolean): void {
+    if (on === this.enabled) return
+    this.enabled = on
+    if (!on) {
+      this.teardown()
+      return
+    }
+    document.body.append(this.host)
+    this.observer = new MutationObserver(() => { this.schedule() })
+    this.observer.observe(document.body, { childList: true, subtree: true })
+    window.addEventListener('scroll', this.onViewportChange, true)
+    window.addEventListener('resize', this.onViewportChange)
+    this.schedule()
+  }
+
+  private readonly onViewportChange = (): void => { this.schedule() }
+
+  /** Coalesce every trigger into one recompute per frame. */
+  private schedule(): void {
+    if (this.frame !== 0 || !this.enabled) return
+    this.frame = requestAnimationFrame(() => {
+      this.frame = 0
+      this.draw()
+    })
+  }
+
+  /** Measure the rows and repaint the rails. */
+  private draw(): void {
+    if (!this.enabled) return
+    const rows = Array.from(
+      document.querySelectorAll<HTMLElement>('[class*="_sessionRow"], [class*="_projectRow"]'),
+    )
+    if (rows.length === 0) {
+      this.host.textContent = ''
+      return
+    }
+    const geometry = rows.map((row) => {
+      const rect = row.getBoundingClientRect()
+      const pad = Number.parseFloat(getComputedStyle(row).paddingInlineStart) || 0
+      return { top: rect.top, bottom: rect.bottom, x: Math.round(rect.left + pad) }
+    })
+    const columns: number[] = []
+    for (const row of geometry) if (!columns.includes(row.x)) columns.push(row.x)
+    columns.sort((a, b) => a - b)
+
+    const rails: string[] = []
+    for (let index = 0; index < columns.length - 1; index++) {
+      const column = columns[index]!
+      let runTop: number | null = null
+      let runBottom = 0
+      for (const row of geometry) {
+        if (columns.indexOf(row.x) > index) {
+          if (runTop === null) runTop = row.top
+          runBottom = row.bottom
+        } else if (runTop !== null) {
+          rails.push(`<i style="left:${column}px;top:${runTop}px;height:${runBottom - runTop}px"></i>`)
+          runTop = null
+        }
+      }
+      if (runTop !== null) {
+        rails.push(`<i style="left:${column}px;top:${runTop}px;height:${runBottom - runTop}px"></i>`)
+      }
+    }
+    this.host.innerHTML =
+      `<style>#${this.host.id}>i{position:absolute;width:1px;pointer-events:none;` +
+      `background:var(--dsh-sidebar-guide-color,transparent)}</style>` + rails.join('')
+  }
+
+  /** Detach every listener and the overlay itself. */
+  teardown(): void {
+    this.observer?.disconnect()
+    this.observer = undefined
+    window.removeEventListener('scroll', this.onViewportChange, true)
+    window.removeEventListener('resize', this.onViewportChange)
+    if (this.frame !== 0) {
+      cancelAnimationFrame(this.frame)
+      this.frame = 0
+    }
+    this.host.remove()
+  }
+}
+
+/**
  * Projects one appearance settings snapshot onto the document. Replaces the
  * token override layer on every apply; retracts everything in dispose.
  */
@@ -352,6 +466,8 @@ export class AppearanceApplier {
   private videoFailed = false
   /** Last applied background-video playback rate; 1 until a snapshot says otherwise. */
   private videoRate = 1
+  /** Measured indent-guide overlay for the sidebar trees. */
+  private readonly guides = new SidebarGuides()
 
   /**
    * Notified when the background video stops being playable (unsupported
@@ -447,6 +563,8 @@ export class AppearanceApplier {
         ? 'transparent'
         : 'color-mix(in srgb, var(--dsw-alias-label-tertiary, #8b8b8b) 45%, transparent)',
     )
+    // Guides need measured geometry, not CSS (see SidebarGuides).
+    this.guides.setEnabled(value.sidebarGuides !== false)
     // 毛玻璃 also drives the host's modal masks and dropdown menu backdrop filters:
     // dialogs/dropdowns dim the page through `.mask` elements whose backdrop-filter
     // is `var(--dsw-mask-blur)` (stock: blur(2px)), and MenuSurface / JobListAction blur
@@ -704,5 +822,6 @@ export class AppearanceApplier {
     // background resumes after the plugin is unloaded.
     document.documentElement.removeAttribute('data-dsw-has-bg')
     document.removeEventListener('visibilitychange', this.onVisibilityChange)
+    this.guides.teardown()
   }
 }
