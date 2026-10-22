@@ -287,6 +287,15 @@ body[data-dsw-bubble-ink-light] #root [class*="bubble" i] a {
 [class*="_projectRow"]:hover [class*="_folder"] {
   display: inline-flex !important;
 }
+/* Selection: the host tints session rows with the same colour it uses for hover, and
+   marks the current workspace only by colouring its folder icon. Paint the whole row
+   instead - with the accent that icon already carries - so the active entry reads at a
+   glance. :has() is how a row with an accented icon is selected without a class. */
+[class*="_sessionRow"][class*="_selected"],
+[class*="_searchResultRow"][class*="_selected"],
+[class*="_projectRow"]:has([class*="_folderActive"]) {
+  background: color-mix(in srgb, var(--dsw-alias-state-business-primary, #4176e6) 20%, transparent) !important;
+}
 /* Indent guides: one rail per ancestor level, clipped to the row's indent width.
    Painted on ::before because the row hover rule sets the whole "background"
    shorthand, which would wipe a background-image on the row itself. */
@@ -321,6 +330,16 @@ body[data-dsw-bubble-ink-light] #root [class*="bubble" i] a {
 }
 [data-files-root] [class*="_level"] [class*="_level"] {
   border-left: 1px solid var(--dsh-sidebar-guide-color, transparent);
+}
+/* The files tree has no selection state and no hover feedback of its own. Hover gets the
+   standard tint; :focus makes the last-clicked row stay highlighted while it holds focus,
+   which is the closest the host lets a stylesheet get to "current row" without inventing
+   state the host would wipe on its next render. */
+[data-files-root] [data-files-path] > button:hover {
+  background: var(--dsw-alias-interactive-bg-hover) !important;
+}
+[data-files-root] [data-files-path] > button:focus {
+  background: color-mix(in srgb, var(--dsw-alias-state-business-primary, #4176e6) 20%, transparent) !important;
 }
 `
 
@@ -433,7 +452,7 @@ export class AppearanceApplier {
       '--dsh-sidebar-guide-color',
       value.sidebarGuides === false
         ? 'transparent'
-        : 'var(--dsw-alias-border-l3, rgba(128, 128, 128, 0.35))',
+        : 'color-mix(in srgb, var(--dsw-alias-label-tertiary, #8b8b8b) 45%, transparent)',
     )
     // 毛玻璃 also drives the host's modal masks and dropdown menu backdrop filters:
     // dialogs/dropdowns dim the page through `.mask` elements whose backdrop-filter
