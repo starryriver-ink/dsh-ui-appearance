@@ -322,14 +322,16 @@ body[data-dsw-bubble-ink-light] #root [class*="bubble" i] a {
   pointer-events: none;
   background: var(--dsh-sidebar-guide-color, transparent);
 }
-/* Project rows: the column of their workspace (one step in). At depth 0 this resolves
-   negative and the rail falls outside the row, which is right for roots. */
+/* Project rows: the centre of their workspace's icon/chevron column. At depth 0 this
+   resolves negative and the rail falls outside the row, which is right for roots.
+   The +8px centres the rail on the parent's icon, the way an explorer aligns its guides,
+   instead of leaving it flush with the parent's padding edge. */
 [class*="_projectRow"]::before {
-  left: calc(8px + (var(--dsh-workspace-indent, 0px) - 12px) * var(--dsh-sidebar-indent-scale, 1));
+  left: calc(16px + (var(--dsh-workspace-indent, 0px) - 12px) * var(--dsh-sidebar-indent-scale, 1));
 }
-/* Session rows: the column of the project that owns them. */
+/* Session rows: the centre of the icon/chevron column of the project that owns them. */
 [class*="_sessionRow"]::before {
-  left: calc(8px + var(--dsh-workspace-indent, 0px) * var(--dsh-sidebar-indent-scale, 1));
+  left: calc(16px + var(--dsh-workspace-indent, 0px) * var(--dsh-sidebar-indent-scale, 1));
 }
 /* Files ("work tree") panel: denser rows and the same guide idea, drawn as a rail on
    each nested level because that tree nests <ul> instead of using a depth variable. */
