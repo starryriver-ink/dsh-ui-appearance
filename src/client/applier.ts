@@ -303,35 +303,14 @@ body[data-dsw-bubble-ink-light] #root [class*="bubble" i] a {
 [class*="_searchResultRow"][class*="_selected"] {
   background: color-mix(in srgb, var(--dsw-alias-state-business-primary, #4176e6) 20%, transparent) !important;
 }
-/* Indent guides: one 1px rail per row, in its PARENT's column, so the rails of
-   consecutive rows at the same level join into a continuous line. Overflowing 4px past
-   the row on both sides closes the gap between rows (row pitch > row height). The earlier
-   gradient could not do either: it was clipped to the indent box, so its outer rail landed
-   exactly on the box edge and got cut away, and each row only covered its own height. */
-[class*="_sessionRow"],
-[class*="_projectRow"] {
-  position: relative;
-}
-[class*="_sessionRow"]::before,
-[class*="_projectRow"]::before {
-  content: "";
-  position: absolute;
-  top: -4px;
-  bottom: -4px;
-  width: 1px;
-  pointer-events: none;
-  background: var(--dsh-sidebar-guide-color, transparent);
-}
-/* Project rows: the centre of their workspace's icon/chevron column. At depth 0 this
-   resolves negative and the rail falls outside the row, which is right for roots.
-   The +8px centres the rail on the parent's icon, the way an explorer aligns its guides,
-   instead of leaving it flush with the parent's padding edge. */
-[class*="_projectRow"]::before {
-  left: calc(16px + (var(--dsh-workspace-indent, 0px) - 12px) * var(--dsh-sidebar-indent-scale, 1));
-}
-/* Session rows: the centre of the icon/chevron column of the project that owns them. */
-[class*="_sessionRow"]::before {
-  left: calc(16px + var(--dsh-workspace-indent, 0px) * var(--dsh-sidebar-indent-scale, 1));
+/* Indent guides: one continuous rail per nesting level, drawn on that level's own group
+   section so it spans the whole subtree the level owns. Per-row rails cannot do this: a
+   row can only paint its own parent's column, so as soon as a deeper row appears (an
+   expanded folder) the shallower columns lose their line - and because the row pitch is
+   larger than the row itself, the rail also breaks into one segment per row.
+   Nested groups only, so roots get no rail drawn above them. */
+[class*="_groupSection"] [class*="_groupSection"] {
+  border-left: 1px solid var(--dsh-sidebar-guide-color, transparent);
 }
 /* Files ("work tree") panel: denser rows and the same guide idea, drawn as a rail on
    each nested level because that tree nests <ul> instead of using a depth variable. */
