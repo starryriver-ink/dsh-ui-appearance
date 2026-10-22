@@ -352,6 +352,8 @@ class SidebarGuides {
   private observer: MutationObserver | undefined
   private frame = 0
   private enabled = false
+  /** Last painted markup, so idle frames skip the DOM write. */
+  private lastMarkup = ''
 
   constructor() {
     this.host = document.createElement('div')
@@ -414,8 +416,11 @@ class SidebarGuides {
     columns.sort((a, b) => a - b)
 
     const rails: string[] = []
+    // Rails sit on the parent's icon CENTRE, not its padding edge: the chevron/icon slot
+    // is 16px wide, so a child's rail is half a slot right of that content start.
+    const guideIconCenter = 8
     for (let index = 0; index < columns.length - 1; index++) {
-      const column = columns[index]!
+      const column = columns[index]! + guideIconCenter
       let runTop: number | null = null
       let runBottom = 0
       for (const row of geometry) {
@@ -431,9 +436,16 @@ class SidebarGuides {
         rails.push(`<i style="left:${column}px;top:${runTop}px;height:${runBottom - runTop}px"></i>`)
       }
     }
-    this.host.innerHTML =
+    // Guides must not animate: the host transitions row heights, so a rebuild lands every
+    // frame. Pin transitions off on the rails, and skip the write when the measurement is
+    // unchanged - idle frames then cost nothing and the rails never re-mount (flicker).
+    const markup =
       `<style>#${this.host.id}>i{position:absolute;width:1px;pointer-events:none;` +
+      `transition:none!important;animation:none!important;` +
       `background:var(--dsh-sidebar-guide-color,transparent)}</style>` + rails.join('')
+    if (markup === this.lastMarkup) return
+    this.lastMarkup = markup
+    this.host.innerHTML = markup
   }
 
   /** Detach every listener and the overlay itself. */
