@@ -303,9 +303,11 @@ body[data-dsw-bubble-ink-light] #root [class*="bubble" i] a {
 [class*="_searchResultRow"][class*="_selected"] {
   background: color-mix(in srgb, var(--dsw-alias-state-business-primary, #4176e6) 20%, transparent) !important;
 }
-/* Indent guides: one rail per ancestor level, clipped to the row's indent width.
-   Painted on ::before because the row hover rule sets the whole "background"
-   shorthand, which would wipe a background-image on the row itself. */
+/* Indent guides: one 1px rail per row, in its PARENT's column, so the rails of
+   consecutive rows at the same level join into a continuous line. Overflowing 4px past
+   the row on both sides closes the gap between rows (row pitch > row height). The earlier
+   gradient could not do either: it was clipped to the indent box, so its outer rail landed
+   exactly on the box edge and got cut away, and each row only covered its own height. */
 [class*="_sessionRow"],
 [class*="_projectRow"] {
   position: relative;
@@ -314,17 +316,20 @@ body[data-dsw-bubble-ink-light] #root [class*="bubble" i] a {
 [class*="_projectRow"]::before {
   content: "";
   position: absolute;
-  inset-block: 0;
-  left: 0;
+  top: -4px;
+  bottom: -4px;
+  width: 1px;
   pointer-events: none;
-  width: calc(8px + var(--dsh-workspace-indent, 0px) * var(--dsh-sidebar-indent-scale, 1));
-  background-image: repeating-linear-gradient(
-    to right,
-    var(--dsh-sidebar-guide-color, transparent) 0 1px,
-    transparent 1px calc(12px * var(--dsh-sidebar-indent-scale, 1))
-  );
-  background-repeat: no-repeat;
-  background-position: 8px 0;
+  background: var(--dsh-sidebar-guide-color, transparent);
+}
+/* Project rows: the column of their workspace (one step in). At depth 0 this resolves
+   negative and the rail falls outside the row, which is right for roots. */
+[class*="_projectRow"]::before {
+  left: calc(8px + (var(--dsh-workspace-indent, 0px) - 12px) * var(--dsh-sidebar-indent-scale, 1));
+}
+/* Session rows: the column of the project that owns them. */
+[class*="_sessionRow"]::before {
+  left: calc(8px + var(--dsh-workspace-indent, 0px) * var(--dsh-sidebar-indent-scale, 1));
 }
 /* Files ("work tree") panel: denser rows and the same guide idea, drawn as a rail on
    each nested level because that tree nests <ul> instead of using a depth variable. */
@@ -338,12 +343,9 @@ body[data-dsw-bubble-ink-light] #root [class*="bubble" i] a {
 [data-files-root] [class*="_level"] [class*="_level"] {
   border-left: 1px solid var(--dsh-sidebar-guide-color, transparent);
 }
-/* The host nests one group section per tree level and writes that level's indent on it,
-   so a border on every nested group draws the rail for each level (the per-row gradient
-   above can only reach the two values the variable actually carries). */
-[class*="_groupSection"] [class*="_groupSection"] {
-  border-left: 1px solid var(--dsh-sidebar-guide-color, transparent);
-}
+/* Note: an earlier revision put a border on every nested group section. Each project is
+   its own nested group, so that drew one short segment per project rather than a
+   continuous rail; dropped in favour of the per-row rails above. */
 /* The files tree has no selection state and no hover feedback of its own. Hover gets the
    standard tint; :focus makes the last-clicked row stay highlighted while it holds focus,
    which is the closest the host lets a stylesheet get to "current row" without inventing
