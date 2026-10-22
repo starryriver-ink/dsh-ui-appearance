@@ -354,16 +354,23 @@ class SidebarGuides {
   private enabled = false
   /** Last painted markup, so idle frames skip the DOM write. */
   private lastMarkup = ''
+  /** Scroll container the overlay lives in; rails then scroll with the content natively. */
+  private scroller: HTMLElement | undefined
+  /** Set when this overlay forced `position: relative` onto the scroll container. */
+  private madePositioned = false
+  /** Timestamp until which mutations keep re-measuring every frame (expand animation). */
+  private burstUntil = 0
 
   constructor() {
     this.host = document.createElement('div')
     this.host.id = 'dsh-appearance-guides'
     const style = this.host.style
-    style.position = 'fixed'
-    style.inset = '0'
+    style.position = 'absolute'
+    style.top = '0'
+    style.left = '0'
+    style.width = '100%'
     style.pointerEvents = 'none'
     style.zIndex = '1'
-    style.overflow = 'hidden'
   }
 
   /**
@@ -377,15 +384,21 @@ class SidebarGuides {
       this.teardown()
       return
     }
-    document.body.append(this.host)
-    this.observer = new MutationObserver(() => { this.schedule() })
+    this.observer = new MutationObserver(() => {
+      // The host animates row heights, so one measurement at mutation time is stale for
+      // the whole transition; keep re-measuring for a short burst afterwards instead.
+      this.burstUntil = performance.now() + 600
+      this.schedule()
+    })
     this.observer.observe(document.body, { childList: true, subtree: true })
-    window.addEventListener('scroll', this.onViewportChange, true)
-    window.addEventListener('resize', this.onViewportChange)
+    window.addEventListener('resize', this.onResize)
     this.schedule()
   }
 
-  private readonly onViewportChange = (): void => { this.schedule() }
+  private readonly onResize = (): void => {
+    this.burstUntil = performance.now() + 300
+    this.schedule()
+  }
 
   /** Coalesce every trigger into one recompute per frame. */
   private schedule(): void {
@@ -393,7 +406,26 @@ class SidebarGuides {
     this.frame = requestAnimationFrame(() => {
       this.frame = 0
       this.draw()
+      if (performance.now() < this.burstUntil) this.schedule()
     })
+  }
+
+  /**
+   * Resolve the element the rails should live in: the nearest scrollable ancestor of the
+   * rows. Positioning inside it (in its content coordinate space) is what keeps the rails
+   * glued to the rows while scrolling - a viewport-fixed overlay is always one frame late
+   * because the browser applies the scroll after the recompute.
+   * @param rows - current row elements.
+   * @returns the scroll container, or the document body when none is found.
+   */
+  private resolveScroller(rows: HTMLElement[]): HTMLElement {
+    let node = rows[0]?.parentElement ?? null
+    while (node !== null && node !== document.body) {
+      const style = getComputedStyle(node)
+      if (/(auto|scroll)/.test(style.overflowY) && node.scrollHeight > node.clientHeight) return node
+      node = node.parentElement
+    }
+    return document.body
   }
 
   /** Measure the rows and repaint the rails. */
@@ -402,15 +434,41 @@ class SidebarGuides {
     const rows = Array.from(
       document.querySelectorAll<HTMLElement>('[class*="_sessionRow"], [class*="_projectRow"]'),
     )
+    const scroller = this.resolveScroller(rows)
+    if (scroller !== this.scroller) {
+      this.host.remove()
+      if (scroller === document.body) {
+        Object.assign(this.host.style, { position: 'fixed', inset: '0', width: 'auto' })
+      } else {
+        Object.assign(this.host.style, { position: 'absolute', top: '0', left: '0', width: '100%' })
+        if (getComputedStyle(scroller).position === 'static') {
+          scroller.style.position = 'relative'
+          this.madePositioned = true
+        }
+      }
+      scroller.append(this.host)
+      this.scroller = scroller
+      this.lastMarkup = ''
+    }
     if (rows.length === 0) {
       this.host.textContent = ''
+      this.lastMarkup = ''
       return
     }
+    // Content-space origin: body-fixed overlays use the viewport, in-scroller overlays use
+    // the scroller's content box, so subtract the container and add its scroll offset.
+    const origin = scroller.getBoundingClientRect()
+    const offsetY = scroller === document.body ? 0 : scroller.scrollTop
     const geometry = rows.map((row) => {
       const rect = row.getBoundingClientRect()
       const pad = Number.parseFloat(getComputedStyle(row).paddingInlineStart) || 0
-      return { top: rect.top, bottom: rect.bottom, x: Math.round(rect.left + pad) }
+      return {
+        top: rect.top - origin.top + offsetY,
+        bottom: rect.bottom - origin.top + offsetY,
+        x: Math.round(rect.left - origin.left + pad),
+      }
     })
+    this.host.style.height = `${scroller === document.body ? 0 : scroller.scrollHeight}px`
     const columns: number[] = []
     for (const row of geometry) if (!columns.includes(row.x)) columns.push(row.x)
     columns.sort((a, b) => a - b)
@@ -448,17 +506,23 @@ class SidebarGuides {
     this.host.innerHTML = markup
   }
 
-  /** Detach every listener and the overlay itself. */
+  /** Detach every listener and the overlay, and restore the host styles this forced. */
   teardown(): void {
     this.observer?.disconnect()
     this.observer = undefined
-    window.removeEventListener('scroll', this.onViewportChange, true)
-    window.removeEventListener('resize', this.onViewportChange)
+    window.removeEventListener('resize', this.onResize)
     if (this.frame !== 0) {
       cancelAnimationFrame(this.frame)
       this.frame = 0
     }
     this.host.remove()
+    if (this.madePositioned && this.scroller !== undefined) {
+      this.scroller.style.position = ''
+      this.madePositioned = false
+    }
+    this.scroller = undefined
+    this.lastMarkup = ''
+    this.burstUntil = 0
   }
 }
 
@@ -573,7 +637,7 @@ export class AppearanceApplier {
       '--dsh-sidebar-guide-color',
       value.sidebarGuides === false
         ? 'transparent'
-        : 'color-mix(in srgb, var(--dsw-alias-label-tertiary, #8b8b8b) 45%, transparent)',
+        : 'color-mix(in srgb, var(--dsw-alias-label-tertiary, #8b8b8b) 26%, transparent)',
     )
     // Guides need measured geometry, not CSS (see SidebarGuides).
     this.guides.setEnabled(value.sidebarGuides !== false)
