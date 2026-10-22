@@ -15,6 +15,14 @@ export const BACKGROUND_VIDEO_RATE_MIN = 0.25
 /** Fastest background-video playback rate (schema bound). */
 export const BACKGROUND_VIDEO_RATE_MAX = 2
 
+/** Sidebar list row height bounds, px (session rows; project rows sit 4px taller). */
+export const SIDEBAR_ROW_HEIGHT_MIN = 28
+export const SIDEBAR_ROW_HEIGHT_MAX = 48
+
+/** Tree indent scale bounds: 1 keeps the host's own 12px-per-level step. */
+export const SIDEBAR_INDENT_SCALE_MIN = 1
+export const SIDEBAR_INDENT_SCALE_MAX = 2.5
+
 /** Max emphasized-text tint alpha (schema bound for the inline-code chips). */
 export const EMPHASIS_ALPHA_MAX = 0.45
 
@@ -130,6 +138,12 @@ export interface AppearanceSettings extends AppearanceColors {
   codeAlpha: number
   /** Keep the sidebar fill opaque even when surfaceAlpha is below 1. */
   sidebarOpaque: boolean
+  /** Sidebar list row height in px, applied to session rows (project rows get +4). */
+  sidebarRowHeight: number
+  /** Multiplier on the host's per-level tree indent step (1 = host default). */
+  sidebarIndentScale: number
+  /** Draw IDE-style indent guide rails down the sidebar trees. */
+  sidebarGuides: boolean
   /** Glass blur in px added to the wallpaper blur, 0..20 (0 = no extra blur). */
   glassBlur: number
   /** Tint alpha of emphasized text chips (inline code), 0..0.45. */
@@ -162,6 +176,9 @@ export const DEFAULT_SETTINGS: AppearanceSettings = {
   inputAlpha: 1,
   codeAlpha: 1,
   sidebarOpaque: false,
+  sidebarRowHeight: 38,
+  sidebarIndentScale: 1.8,
+  sidebarGuides: true,
   glassBlur: 0,
   emphasisAlpha: 0.22,
 }
@@ -175,12 +192,14 @@ const NUMERIC_BOUNDS: Record<string, { min: number; max: number }> = {
   inputAlpha: { min: 0, max: 1 },
   codeAlpha: { min: 0, max: 1 },
   glassBlur: { min: 0, max: GLASS_BLUR_MAX },
+  sidebarRowHeight: { min: SIDEBAR_ROW_HEIGHT_MIN, max: SIDEBAR_ROW_HEIGHT_MAX },
+  sidebarIndentScale: { min: SIDEBAR_INDENT_SCALE_MIN, max: SIDEBAR_INDENT_SCALE_MAX },
   backgroundVideoRate: { min: BACKGROUND_VIDEO_RATE_MIN, max: BACKGROUND_VIDEO_RATE_MAX },
   emphasisAlpha: { min: EMPHASIS_ALPHA_MIN, max: EMPHASIS_ALPHA_MAX },
 }
 
 /** Boolean fields, used to sanitize persisted input. */
-const BOOLEAN_FIELDS = ['imageDark', 'sidebarOpaque'] as const
+const BOOLEAN_FIELDS = ['imageDark', 'sidebarOpaque', 'sidebarGuides'] as const
 
 /** Canonicalize a hex color: lowercase, 3-digit expanded to 6-digit. */
 function normalizeHex(value: string): string {

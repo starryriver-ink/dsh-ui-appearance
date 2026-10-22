@@ -30,6 +30,11 @@ const BODY_VARIABLES = [
   '--dsw-appearance-scrim',
   '--dsw-appearance-bubble-ink-light',
   '--dsw-appearance-bubble-ink-dark',
+  '--dsh-sidebar-row-h',
+  '--dsh-sidebar-project-h',
+  '--dsh-sidebar-files-pad',
+  '--dsh-sidebar-indent-scale',
+  '--dsh-sidebar-guide-color',
 ] as const
 
 /**
@@ -255,6 +260,68 @@ body[data-dsw-bubble-ink-light] #root [class*="bubble" i] a {
 :is(#root, body) [class*="menu" i] {
   --dsw-menu-surface-fill: var(--dsw-specific-menu) !important;
 }
+/* ---- Sidebar / explorer tuning -------------------------------------------------
+   Selectors match the host's CSS-module *local* names (rendered as "<hash>_<local>")
+   and its data attributes, so a host rebuild that keeps the names keeps working;
+   a rename degrades to "no styling", never to a broken layout. */
+/* Row height: session rows take the slider value, project rows sit 4px taller. */
+[class*="_sessionRow"] {
+  height: var(--dsh-sidebar-row-h, 32px) !important;
+}
+[class*="_projectRow"] {
+  height: var(--dsh-sidebar-project-h, 34px) !important;
+}
+/* Indent: the host writes --dsh-workspace-indent inline (depth * 12px) and consumes it
+   through this padding, so the scale has to be applied here rather than to the variable. */
+[class*="_sessionRow"],
+[class*="_projectRow"] {
+  padding-inline-start: calc(8px + var(--dsh-workspace-indent, 0px) * var(--dsh-sidebar-indent-scale, 1)) !important;
+}
+/* Hover used to hide the folder icon and reveal the chevron. Both slots are 16px wide,
+   so revealing one and hiding the other re-flowed the row — the hover jitter. Keeping
+   both visible leaves the layout constant and keeps the expand affordance.
+   The row itself toggles on click and the folder icon already encodes open/closed. */
+[class*="_projectRow"] [class*="_chevron"] {
+  display: inline-flex !important;
+}
+[class*="_projectRow"]:hover [class*="_folder"] {
+  display: inline-flex !important;
+}
+/* Indent guides: one rail per ancestor level, clipped to the row's indent width.
+   Painted on ::before because the row hover rule sets the whole "background"
+   shorthand, which would wipe a background-image on the row itself. */
+[class*="_sessionRow"],
+[class*="_projectRow"] {
+  position: relative;
+}
+[class*="_sessionRow"]::before,
+[class*="_projectRow"]::before {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  left: 0;
+  pointer-events: none;
+  width: calc(8px + var(--dsh-workspace-indent, 0px) * var(--dsh-sidebar-indent-scale, 1));
+  background-image: repeating-linear-gradient(
+    to right,
+    var(--dsh-sidebar-guide-color, transparent) 0 1px,
+    transparent 1px calc(12px * var(--dsh-sidebar-indent-scale, 1))
+  );
+  background-repeat: no-repeat;
+  background-position: 8px 0;
+}
+/* Files ("work tree") panel: denser rows and the same guide idea, drawn as a rail on
+   each nested level because that tree nests <ul> instead of using a depth variable. */
+[data-files-root] [data-files-row] {
+  padding-top: var(--dsh-sidebar-files-pad, 5px) !important;
+  padding-bottom: var(--dsh-sidebar-files-pad, 5px) !important;
+}
+[data-files-root] [class*="_level"] {
+  padding-left: 24px !important;
+}
+[data-files-root] [class*="_level"] [class*="_level"] {
+  border-left: 1px solid var(--dsh-sidebar-guide-color, transparent);
+}
 `
 
 /**
@@ -353,6 +420,20 @@ export class AppearanceApplier {
     body.style.setProperty(
       '--dsw-appearance-inset',
       wallpaperBlur > 0 ? `-${BLUR_EDGE_MARGIN_PX}px` : '0px',
+    )
+    // Sidebar / explorer tuning. Derived values keep a single row-height knob
+    // meaningful: project rows stay 4px taller than session rows, and the files
+    // tree's row padding grows half as fast as the row height.
+    const rowHeight = Math.round(value.sidebarRowHeight)
+    body.style.setProperty('--dsh-sidebar-row-h', `${rowHeight}px`)
+    body.style.setProperty('--dsh-sidebar-project-h', `${rowHeight + 4}px`)
+    body.style.setProperty('--dsh-sidebar-files-pad', `${Math.max(2, Math.round(5 + (rowHeight - 32) / 2))}px`)
+    body.style.setProperty('--dsh-sidebar-indent-scale', String(value.sidebarIndentScale))
+    body.style.setProperty(
+      '--dsh-sidebar-guide-color',
+      value.sidebarGuides === false
+        ? 'transparent'
+        : 'var(--dsw-alias-border-l3, rgba(128, 128, 128, 0.35))',
     )
     // 毛玻璃 also drives the host's modal masks and dropdown menu backdrop filters:
     // dialogs/dropdowns dim the page through `.mask` elements whose backdrop-filter

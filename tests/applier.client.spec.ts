@@ -183,6 +183,28 @@ describe('AppearanceApplier', () => {
     expect(document.body.style.getPropertyValue('--dsw-appearance-scrim')).toBe('')
   })
 
+  it('derives the sidebar layout variables from the row-height knob', () => {
+    const { ctx } = fakeCtx()
+    const applier = new AppearanceApplier(ctx)
+    applier.apply(full({ sidebarRowHeight: 40, sidebarIndentScale: 2, sidebarGuides: true }))
+    const body = document.body.style
+    expect(body.getPropertyValue('--dsh-sidebar-row-h')).toBe('40px')
+    // Project rows stay 4px taller, so one knob keeps the hierarchy.
+    expect(body.getPropertyValue('--dsh-sidebar-project-h')).toBe('44px')
+    // Files-tree padding grows half as fast as the row height: 5 + 8/2 = 9.
+    expect(body.getPropertyValue('--dsh-sidebar-files-pad')).toBe('9px')
+    expect(body.getPropertyValue('--dsh-sidebar-indent-scale')).toBe('2')
+    // Guides on: a real colour. Guides off: transparent (the rails vanish, no rule needed).
+    expect(body.getPropertyValue('--dsh-sidebar-guide-color')).not.toBe('transparent')
+    applier.apply(full({ sidebarGuides: false }))
+    expect(document.body.style.getPropertyValue('--dsh-sidebar-guide-color')).toBe('transparent')
+    // Every sidebar variable is retracted on dispose like the rest of the layer.
+    applier.dispose()
+    expect(document.body.style.getPropertyValue('--dsh-sidebar-row-h')).toBe('')
+    expect(document.body.style.getPropertyValue('--dsh-sidebar-indent-scale')).toBe('')
+    expect(document.body.style.getPropertyValue('--dsh-sidebar-guide-color')).toBe('')
+  })
+
   it('dispose cancels an in-flight video load (no orphan element or URL)', async () => {
     const { ctx } = fakeCtx()
     const applier = new AppearanceApplier(ctx)

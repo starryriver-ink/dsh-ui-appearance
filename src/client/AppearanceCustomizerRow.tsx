@@ -26,6 +26,7 @@ import {
   APPEARANCE_PRESETS, LIGHT_PRESETS, DARK_PRESETS,
   BACKGROUND_BLUR_MAX, BACKGROUND_VIDEO_RATE_MAX, BACKGROUND_VIDEO_RATE_MIN,
   EMPHASIS_ALPHA_MAX, EMPHASIS_ALPHA_MIN, GLASS_BLUR_MAX,
+  SIDEBAR_INDENT_SCALE_MAX, SIDEBAR_INDENT_SCALE_MIN, SIDEBAR_ROW_HEIGHT_MAX, SIDEBAR_ROW_HEIGHT_MIN,
 } from './tokens.ts'
 import type { AppearanceKey } from './locales.ts'
 import type { createAppearanceRowStore } from './settings-store.ts'
@@ -831,6 +832,38 @@ export function AppearanceCustomizerRow({
               onChange={value => { set('glassBlur', value) }}
             />
             <div className={css.hint}>{t('surface.hint')}</div>
+          </div>
+
+          <div className={css.section}>
+            <div className={css.sectionTitle}>{t('sidebar.title')}</div>
+            <Slider
+              label={t('sidebar.rowHeight')}
+              value={settings.sidebarRowHeight}
+              min={SIDEBAR_ROW_HEIGHT_MIN}
+              max={SIDEBAR_ROW_HEIGHT_MAX}
+              step={1}
+              format={value => `${value}px`}
+              onChange={value => { set('sidebarRowHeight', value) }}
+            />
+            <Slider
+              label={t('sidebar.indentScale')}
+              value={settings.sidebarIndentScale}
+              min={SIDEBAR_INDENT_SCALE_MIN}
+              max={SIDEBAR_INDENT_SCALE_MAX}
+              step={0.1}
+              format={value => `${value.toFixed(1)}×`}
+              onChange={value => { set('sidebarIndentScale', value) }}
+            />
+            <label className={css.checkRow}>
+              <input
+                type="checkbox"
+                className={css.checkbox}
+                checked={settings.sidebarGuides}
+                onChange={event => { set('sidebarGuides', event.target.checked) }}
+              />
+              <span className={css.sliderLabel}>{t('sidebar.guides')}</span>
+            </label>
+            <div className={css.hint}>{t('sidebar.hint')}</div>
           </div>
 
           <div className={css.section}>
