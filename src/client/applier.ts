@@ -303,15 +303,12 @@ body[data-dsw-bubble-ink-light] #root [class*="bubble" i] a {
 [class*="_searchResultRow"][class*="_selected"] {
   background: color-mix(in srgb, var(--dsw-alias-state-business-primary, #4176e6) 20%, transparent) !important;
 }
-/* Indent guides: one continuous rail per nesting level, drawn on that level's own group
-   section so it spans the whole subtree the level owns. Per-row rails cannot do this: a
-   row can only paint its own parent's column, so as soon as a deeper row appears (an
-   expanded folder) the shallower columns lose their line - and because the row pitch is
-   larger than the row itself, the rail also breaks into one segment per row.
-   Nested groups only, so roots get no rail drawn above them. */
-[class*="_groupSection"] [class*="_groupSection"] {
-  border-left: 1px solid var(--dsh-sidebar-guide-color, transparent);
-}
+/* Indent guides: not expressible in CSS with this DOM, so the stylesheet stops trying.
+   Measured on 0.2.1: --dsh-workspace-indent only ever carries 0px and 12px, so CSS cannot
+   know a row's real depth; a group section wraps one project (not one tree level), so a
+   border gives one segment per project; and rows are shorter than the row pitch, so a
+   per-row rail is segmented. Every CSS variant broke wherever a folder expanded.
+   The rails now come from the geometry-driven overlay owned by the applier. */
 /* Files ("work tree") panel: denser rows and the same guide idea, drawn as a rail on
    each nested level because that tree nests <ul> instead of using a depth variable. */
 [data-files-root] [data-files-row] {
