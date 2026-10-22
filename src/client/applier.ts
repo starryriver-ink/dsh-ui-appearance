@@ -283,17 +283,19 @@ body[data-dsw-bubble-ink-light] #root [class*="bubble" i] a {
    The row itself toggles on click and the folder icon already encodes open/closed. */
 [class*="_projectRow"] [class*="_chevron"] {
   display: inline-flex !important;
+  /* Explorer order is arrow-then-folder, with the arrow in the indent column so it
+     lines up with the guide rails; the host renders folder-then-chevron. */
+  order: -1;
 }
 [class*="_projectRow"]:hover [class*="_folder"] {
   display: inline-flex !important;
 }
-/* Selection: the host tints session rows with the same colour it uses for hover, and
-   marks the current workspace only by colouring its folder icon. Paint the whole row
-   instead - with the accent that icon already carries - so the active entry reads at a
-   glance. :has() is how a row with an accented icon is selected without a class. */
+/* Selection: the host tints session rows with the same colour it uses for hover, so the
+   active session reads no differently from a hovered one. Paint the whole row with the
+   accent instead. Project rows are deliberately NOT included: folderActive is set on every
+   ancestor of the current session, so :has() on the icon lit up the whole ancestor chain. */
 [class*="_sessionRow"][class*="_selected"],
-[class*="_searchResultRow"][class*="_selected"],
-[class*="_projectRow"]:has([class*="_folderActive"]) {
+[class*="_searchResultRow"][class*="_selected"] {
   background: color-mix(in srgb, var(--dsw-alias-state-business-primary, #4176e6) 20%, transparent) !important;
 }
 /* Indent guides: one rail per ancestor level, clipped to the row's indent width.
