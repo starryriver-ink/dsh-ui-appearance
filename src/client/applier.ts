@@ -272,10 +272,15 @@ body[data-dsw-bubble-ink-light] #root [class*="bubble" i] a {
   height: var(--dsh-sidebar-project-h, 34px) !important;
 }
 /* Indent: the host writes --dsh-workspace-indent inline (depth * 12px) and consumes it
-   through this padding, so the scale has to be applied here rather than to the variable. */
-[class*="_sessionRow"],
+   through this padding, so the scale has to be applied here rather than to the variable.
+   Measured on 0.2.1: that variable only ever takes 0px (workspace rows) and 12px (their
+   children), so it cannot express deeper levels; sessions share their project's 12px and
+   therefore never indent past it. Sessions get one extra step below. */
 [class*="_projectRow"] {
   padding-inline-start: calc(8px + var(--dsh-workspace-indent, 0px) * var(--dsh-sidebar-indent-scale, 1)) !important;
+}
+[class*="_sessionRow"] {
+  padding-inline-start: calc(8px + (var(--dsh-workspace-indent, 0px) + 12px) * var(--dsh-sidebar-indent-scale, 1)) !important;
 }
 /* Hover used to hide the folder icon and reveal the chevron. Both slots are 16px wide,
    so revealing one and hiding the other re-flowed the row — the hover jitter. Keeping
@@ -331,6 +336,12 @@ body[data-dsw-bubble-ink-light] #root [class*="bubble" i] a {
   padding-left: 24px !important;
 }
 [data-files-root] [class*="_level"] [class*="_level"] {
+  border-left: 1px solid var(--dsh-sidebar-guide-color, transparent);
+}
+/* The host nests one group section per tree level and writes that level's indent on it,
+   so a border on every nested group draws the rail for each level (the per-row gradient
+   above can only reach the two values the variable actually carries). */
+[class*="_groupSection"] [class*="_groupSection"] {
   border-left: 1px solid var(--dsh-sidebar-guide-color, transparent);
 }
 /* The files tree has no selection state and no hover feedback of its own. Hover gets the
